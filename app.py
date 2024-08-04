@@ -17,44 +17,64 @@ class Warner:
         self.root.iconbitmap("icon.ico")
         self.root.geometry("500x600")
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
+        
         self.style = ttkb.Style()
         self.style.theme_use('darkly')
+        
         self.work_time_value = tk.DoubleVar()
         self.break_time_value = tk.DoubleVar()
         self.alarm_duration_value = tk.DoubleVar()
+        
         self.is_running = False
         self.stop_event = threading.Event()
         self.thread = None
         self.icon = None
         self.icon_thread = None
+        self.window_visible = True
+        
         self.create_widgets()
         self.create_system_tray()
+        
         self.engine = pyttsx3.init()
         self.voices = self.engine.getProperty('voices')
         self.engine.setProperty('voice', self.voices[1].id)
+
     def create_widgets(self):
         self.main_frame = ttk.Frame(self.root, padding="30 30 30 30")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         self.create_mode_switch()
         self.create_sliders()
         self.create_button()
+
     def create_system_tray(self):
-        image = Image.open("icon.png")  # Replace with path to your icon
-        menu = (item('Show', self.show_window, default=True, visible=False),
-                item('Hide', self.hide_window),
-                item('Exit', self.quit_window))
-        self.icon = pystray.Icon("name", image, "Work/Break Timer", menu)
+        image = Image.open("icon.png")
+        self.icon = pystray.Icon("name", image, "Work/Break Timer", menu=self.create_menu())
         self.icon_thread = threading.Thread(target=self.icon.run)
         self.icon_thread.daemon = True
         self.icon_thread.start()
+
+    def create_menu(self):
+        return pystray.Menu(
+            item('Show', self.show_window, visible=lambda item: not self.window_visible),
+            item('Hide', self.hide_window, visible=lambda item: self.window_visible),
+            item('Exit', self.quit_window)
+        )
+
     def show_window(self):
+        self.window_visible = True
         self.root.after(0, self._show_window)
+        self.icon.update_menu()
+
     def _show_window(self):
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
+
     def hide_window(self):
+        self.window_visible = False
         self.root.withdraw()
+        self.icon.update_menu()
+
     def quit_window(self):
         self.stop_event.set()
         if self.thread:
@@ -64,6 +84,7 @@ class Warner:
         self.root.quit()
         self.root.destroy()
         sys.exit()
+
     def create_mode_switch(self):
         switch_frame = ttk.Frame(self.main_frame)
         switch_frame.pack(fill=tk.X, pady=(0, 20))
