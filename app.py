@@ -165,7 +165,7 @@ class Warner:
                 break
             self.play_beep(alarm_duration)
             time.sleep(1)
-            self.engine.say(f"This is break time take a {int(self.work_time_value.get())} minute break.")
+            self.engine.say(f"This is break time take a {int(self.break_time_value.get())} minute break.")
             self.engine.runAndWait()
             if self.wait_or_stop(break_time):
                 break
