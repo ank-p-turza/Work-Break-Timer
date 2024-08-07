@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 import ttkbootstrap as ttkb
 import threading
 import time
@@ -199,12 +200,18 @@ class Warner:
         self.lock_file = os.path.join(tempfile.gettempdir(), 'workbreak_timer.lock')
         
         if os.path.exists(self.lock_file):
-            self.show_warning("Another instance of the application is already running.")
+            # Another instance is already running
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            messagebox.showinfo("Application Running", "Another instance of the Work/Break Timer is already running.", parent=root)
+            root.destroy()
             sys.exit(1)
         
+        # Create the lock file
         with open(self.lock_file, 'w') as f:
             f.write(str(os.getpid()))
         
+        # Register function to remove the lock file on exit
         atexit.register(self.cleanup_lock_file)
 
     def cleanup_lock_file(self):
