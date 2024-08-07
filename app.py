@@ -9,9 +9,14 @@ import pystray
 from PIL import Image
 import sys
 import pyttsx3
+import os
+import tempfile
+import atexit
+
 
 class Warner:
     def __init__(self):
+        self.check_single_instance()
         self.root = ttkb.Window("darkly")
         self.root.title("Work/Break Timer")
         self.root.iconbitmap("icon.ico")
@@ -95,10 +100,12 @@ class Warner:
             variable=ttkb.BooleanVar(value=True)
         )
         self.mode_switch.pack(side=tk.RIGHT)
+
     def create_sliders(self):
         self.create_slider("Work Time (Recommended 25 minutes):", 1, 60, self.work_time_value)
         self.create_slider("Break Time (Recommended 5 minutes):", 1, 30, self.break_time_value)
         self.create_slider("Alarm Duration (seconds):", 1, 5, self.alarm_duration_value)
+
     def create_slider(self, text, from_, to, variable):
         frame = ttk.Frame(self.main_frame)
         frame.pack(fill=tk.X, pady=10)
@@ -111,6 +118,7 @@ class Warner:
         value_label = ttk.Label(frame, text="Selected value: 0", font=("Helvetica", 10))
         value_label.pack(anchor="e")   
         variable.trace_add('write', lambda *args: self.update_label(value_label, variable))
+    
     def create_button(self):
         button_frame = ttk.Frame(self.main_frame)
         button_frame.pack(pady=20)
@@ -119,8 +127,10 @@ class Warner:
             command=self.toggle_timer, bootstyle="primary-outline"
         )
         self.button.pack()
+    
     def update_label(self, label, var):
         label.config(text=f"Selected value: {int(var.get())}")
+    
     def toggle_mode(self):
         if self.style.theme.name == 'darkly':
             self.style.theme_use('cosmo')
@@ -128,6 +138,7 @@ class Warner:
         else:
             self.style.theme_use('darkly')
             self.mode_switch.config(text="Dark Mode")
+    
     def toggle_timer(self):
         if self.is_running:
             self.is_running = False
@@ -144,6 +155,7 @@ class Warner:
             self.button.config(text="Stop Timer")
             self.thread = threading.Thread(target=self.run_loop)
             self.thread.start()
+    
     def show_warning(self, message):
         warning_window = tk.Toplevel(self.root)
         warning_window.transient(self.root)
@@ -156,6 +168,7 @@ class Warner:
         x = self.root.winfo_x() + (self.root.winfo_width() - warning_window.winfo_width()) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - warning_window.winfo_height()) // 2
         warning_window.geometry(f"+{x}+{y}")
+    
     def run_loop(self):
         while self.is_running:
             work_time = int(self.work_time_value.get() )* 60 
@@ -173,6 +186,7 @@ class Warner:
             time.sleep(1)
             self.engine.say("This is time to get back to work.")
             self.engine.runAndWait()
+    
     def wait_or_stop(self, duration):
         start_time = time.time()
         while time.time() - start_time < duration:
@@ -180,10 +194,34 @@ class Warner:
                 return True
             time.sleep(0.1)
         return False
+    
+    def check_single_instance(self):
+        self.lock_file = os.path.join(tempfile.gettempdir(), 'workbreak_timer.lock')
+        
+        if os.path.exists(self.lock_file):
+            self.show_warning("Another instance of the application is already running.")
+            sys.exit(1)
+        
+        with open(self.lock_file, 'w') as f:
+            f.write(str(os.getpid()))
+        
+        atexit.register(self.cleanup_lock_file)
+
+    def cleanup_lock_file(self):
+        try:
+            os.remove(self.lock_file)
+        except Exception as e:
+            self.show_warning(f"Error occured {e}")
+
     def play_beep(self, beep_time):
         winsound.Beep(1000, beep_time)
+        
     def run(self):
         self.root.mainloop()
+
+    def is_running():
+        return os.path.exists('lock.txt')
+
 if __name__ == "__main__":
     app = Warner()
     app.run()
